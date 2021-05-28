@@ -44,6 +44,7 @@ bool Cell::IsEmpty() const {
     return impl_->GetText().empty();
 }
 
+/// передается копия text, далее эта копия никак не переносится, не изменяется, вроде как получается бесполезная
 std::unique_ptr<Cell::Impl> Cell::MakeImpl(std::string text) const {
     using namespace std::literals;
     if (text.empty()) {
@@ -77,10 +78,12 @@ bool Cell::IsCyclic(const Impl* impl) const {
     return IsCyclicFormula(dependents, checkeds);
 }
 
+/// вроде как метод не использует поля классов и другие методы, думаю можно его убрать из класса, переделав в простую статическую функцию
 bool Cell::IsCyclicFormula(const Positions& dependents, Positions& checkeds) const {
     if (dependents.count(pos_) != 0) {
         return true;
     }
+
     for (Position pos : dependents) {
         if (!pos.IsValid() || checkeds.count(pos) != 0) {
             continue;
@@ -126,6 +129,7 @@ void Cell::CreateNewDependents() {
     }
 }
 
+/// вроде как метод не использует поля классов и другие методы, думаю можно его убрать из класса, переделав в простую статическую функцию
 void Cell::InvalidAllDependentCaches(const Positions& effects, Positions& invalids) {
     for (Position pos : effects) {
         if (!pos.IsValid()) {

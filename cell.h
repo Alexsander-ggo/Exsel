@@ -31,6 +31,7 @@ public:
     bool                          IsEmpty() const;
 
 private:
+///  нет смысла эти классы оставлять в описании, лучше оставить только объявления, а реализации спарятасть в cpp-файл
     class Impl {
     public:
         virtual                             ~Impl() = default;

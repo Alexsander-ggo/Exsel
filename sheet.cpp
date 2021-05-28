@@ -9,6 +9,7 @@
 
 using namespace std::literals;
 
+/// лишнее копирование test
 void Sheet::SetCell(Position pos, std::string text) {
     PositionCorrect(pos);
     if (cells_.count(pos) == 0) {
@@ -79,6 +80,7 @@ void Sheet::PositionCorrect(Position pos) const {
     }
 }
 
+/// лишнее копироdfние text
 void Sheet::MakeCell(Position pos, std::string text) {
     Cell* cell = new Cell(*this, pos);
     cell->Set(text);
