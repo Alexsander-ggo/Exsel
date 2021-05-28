@@ -9,17 +9,16 @@
 
 using namespace std::literals;
 
-/// лишнее копирование test
 void Sheet::SetCell(Position pos, std::string text) {
     PositionCorrect(pos);
-    if (cells_.count(pos) == 0) {
-        MakeCell(pos, text);
-    }
-    else {
-        cells_[pos]->Set(text);
-    }
     if (!text.empty()) {
         positions_.insert(pos);
+    }
+    if (cells_.count(pos) == 0) {
+        MakeCell(pos, std::move(text));
+    }
+    else {
+        cells_[pos]->Set(std::move(text));
     }
 }
 
@@ -59,7 +58,7 @@ void Sheet::PrintValues(std::ostream& output) const {
         if (cell && !cell->IsEmpty()) {
             std::visit([&output](const auto& x) {
                 output << x;
-            }, cell->GetValue());
+                }, cell->GetValue());
         }
     };
     PrintSheet(output, get_value);
@@ -80,10 +79,9 @@ void Sheet::PositionCorrect(Position pos) const {
     }
 }
 
-/// лишнее копироdfние text
 void Sheet::MakeCell(Position pos, std::string text) {
     Cell* cell = new Cell(*this, pos);
-    cell->Set(text);
+    cell->Set(std::move(text));
     cells_[pos].reset(cell);
 }
 

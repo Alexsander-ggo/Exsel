@@ -12,29 +12,32 @@ namespace {
     class Formula : public FormulaInterface {
     public:
         explicit Formula(std::string expression)
-            : ast_(ParseFormulaAST(expression)) {}
+            : ast_(ParseFormulaAST(std::move(expression))) {}
 
         Value Evaluate(const SheetInterface& sheet) const override {
             CellLookup cell_lookup = [&sheet](Position pos) {
                 auto value = sheet.GetCell(pos)->GetValue();
-                if(std::holds_alternative<double>(value)) {
+                if (std::holds_alternative<double>(value)) {
                     return std::get<double>(value);
-                } else if(std::holds_alternative<std::string>(value)) {
+                }
+                else if (std::holds_alternative<std::string>(value)) {
                     std::string text = sheet.GetCell(pos)->GetText();
                     if (text.empty()) {
                         return 0.0;
                     }
-                    if(text.front() == ESCAPE_SIGN) {
+                    if (text.front() == ESCAPE_SIGN) {
                         throw FormulaError(FormulaError::Category::Value);
                     }
-                    try{
+                    try {
                         return std::stod(text);
-                    } catch (...) {
+                    }
+                    catch (...) {
                         throw FormulaError(FormulaError::Category::Value);
                     }
-                } else {
+                }
+                else {
                     throw std::get<FormulaError>(value);
-                } 
+                }
             };
             try {
                 return ast_.Execute(cell_lookup);

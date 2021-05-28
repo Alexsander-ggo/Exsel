@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 Cell::Cell(Sheet& sheet, Position pos)
     : CellInterface()
@@ -11,7 +12,7 @@ Cell::Cell(Sheet& sheet, Position pos)
 
 void Cell::Set(std::string text) {
     using namespace std::literals;
-    auto tmp = MakeImpl(text);
+    auto tmp = MakeImpl(std::move(text));
     if (IsCyclic(tmp.get())) {
         throw CircularDependencyException("This formula is cyclical"s);
     }
@@ -44,7 +45,6 @@ bool Cell::IsEmpty() const {
     return impl_->GetText().empty();
 }
 
-/// передается копия text, далее эта копия никак не переносится, не изменяется, вроде как получается бесполезная
 std::unique_ptr<Cell::Impl> Cell::MakeImpl(std::string text) const {
     using namespace std::literals;
     if (text.empty()) {
@@ -52,13 +52,14 @@ std::unique_ptr<Cell::Impl> Cell::MakeImpl(std::string text) const {
     }
     if (text.front() == FORMULA_SIGN && text.size() > 1) {
         try {
-            return std::make_unique<FormulaImpl>(text.substr(1), sheet_);
-        } catch (...) {
+            return std::make_unique<FormulaImpl>(std::move(text.substr(1)), sheet_);
+        }
+        catch (...) {
             throw FormulaException("Sytnax error"s);
         }
     }
     else {
-        return std::make_unique<TextImpl>(text);
+        return std::make_unique<TextImpl>(std::move(text));
     }
 }
 
@@ -78,12 +79,10 @@ bool Cell::IsCyclic(const Impl* impl) const {
     return IsCyclicFormula(dependents, checkeds);
 }
 
-/// вроде как метод не использует поля классов и другие методы, думаю можно его убрать из класса, переделав в простую статическую функцию
 bool Cell::IsCyclicFormula(const Positions& dependents, Positions& checkeds) const {
     if (dependents.count(pos_) != 0) {
         return true;
     }
-
     for (Position pos : dependents) {
         if (!pos.IsValid() || checkeds.count(pos) != 0) {
             continue;
@@ -129,8 +128,8 @@ void Cell::CreateNewDependents() {
     }
 }
 
-/// вроде как метод не использует поля классов и другие методы, думаю можно его убрать из класса, переделав в простую статическую функцию
-void Cell::InvalidAllDependentCaches(const Positions& effects, Positions& invalids) {
+void Cell::InvalidAllDependentCaches(const Positions& effects,
+                                     Positions& invalids) {
     for (Position pos : effects) {
         if (!pos.IsValid()) {
             continue;
@@ -149,3 +148,63 @@ void Cell::Init() {
     Positions invalids;
     InvalidAllDependentCaches(effects_, invalids);
 }
+
+// --------------------Cell::EmptyImpl---------------------
+
+Cell::EmptyImpl::EmptyImpl()
+    : Impl() {}
+
+Cell::Value Cell::EmptyImpl::GetValue() const {
+    return std::string();
+}
+
+std::string Cell::EmptyImpl::GetText() const {
+    return std::string();
+}
+
+std::vector<Position> Cell::EmptyImpl::GetReferencedCells() const {
+    return {};
+}
+
+// --------------------Cell::TextImpl---------------------
+
+Cell::TextImpl::TextImpl(std::string str)
+    : Impl()
+    , str_(std::move(str)) {}
+
+Cell::Value Cell::TextImpl::GetValue() const {
+    return (str_.front() != ESCAPE_SIGN) ? str_ : str_.substr(1);
+}
+
+std::string Cell::TextImpl::GetText() const {
+    return str_;
+}
+
+std::vector<Position> Cell::TextImpl::GetReferencedCells() const {
+    return {};
+}
+
+// --------------------Cell::FormulaImpl---------------------
+
+Cell::FormulaImpl::FormulaImpl(std::string str,
+    const SheetInterface& sheet)
+    : Impl()
+    , sheet_(sheet)
+    , formula_(std::move(ParseFormula(str))) {}
+
+Cell::Value Cell::FormulaImpl::GetValue() const {
+    auto res = formula_->Evaluate(sheet_);
+    if (std::holds_alternative<double>(res)) {
+        return std::get<double>(res);
+    }
+    return std::get<FormulaError>(res);
+}
+
+std::string Cell::FormulaImpl::GetText() const {
+    return FORMULA_SIGN + formula_->GetExpression();
+}
+
+std::vector<Position> Cell::FormulaImpl::GetReferencedCells() const {
+    return formula_->GetReferencedCells();
+}
+

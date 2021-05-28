@@ -7,14 +7,13 @@
 #include <optional>
 #include <string>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 class Sheet;
 
 class Cell : public CellInterface {
 public:
-                                  Cell(Sheet& sheet, Position pos);
+    Cell(Sheet& sheet, Position pos);
 
     void                          Set(std::string text);
 
@@ -31,7 +30,6 @@ public:
     bool                          IsEmpty() const;
 
 private:
-///  нет смысла эти классы оставлять в описании, лучше оставить только объявления, а реализации спарятасть в cpp-файл
     class Impl {
     public:
         virtual                             ~Impl() = default;
@@ -45,74 +43,47 @@ private:
 
     class EmptyImpl : public Impl {
     public:
-        EmptyImpl()
-            : Impl() {}
+                                            EmptyImpl();
 
-        Value GetValue() const override {
-            return std::string();
-        }
+        Value                               GetValue() const override;
 
-        std::string GetText() const override {
-            return std::string();
-        }
+        std::string                         GetText() const override;
 
-        std::vector<Position> GetReferencedCells() const override {
-            return {};
-        }
+        std::vector<Position>               GetReferencedCells() const override;
     };
 
     class TextImpl : public Impl {
     public:
-        TextImpl(std::string str)
-            : Impl()
-            , str_(std::move(str)) {}
+                                            TextImpl(std::string str);
 
-        Value GetValue() const override {
-            return (str_.front() != ESCAPE_SIGN) ? str_ : str_.substr(1);
-        }
+        Value                               GetValue() const override;
 
-        std::string GetText() const override {
-            return str_;
-        }
+        std::string                         GetText() const override;
 
-        std::vector<Position> GetReferencedCells() const override {
-            return {};
-        }
+        std::vector<Position>               GetReferencedCells() const override;
 
     private:
-        std::string str_;
+        std::string                         str_;
     };
 
     class FormulaImpl : public Impl {
     public:
-        FormulaImpl(std::string str, const SheetInterface& sheet)
-            : Impl()
-            , sheet_(sheet)
-            , formula_(std::move(ParseFormula(str))) {}
+                                               FormulaImpl(std::string str,
+                                                           const SheetInterface& sheet);
 
-        Value GetValue() const override {
-            auto res = formula_->Evaluate(sheet_);
-            if (std::holds_alternative<double>(res)) {
-                return std::get<double>(res);
-            }
-            return std::get<FormulaError>(res);
-        }
+        Value                                  GetValue() const override;
 
-        std::string GetText() const override {
-            return FORMULA_SIGN + formula_->GetExpression();
-        }
+        std::string                            GetText() const override;
 
-        std::vector<Position> GetReferencedCells() const override {
-            return formula_->GetReferencedCells();
-        }
+        std::vector<Position>                  GetReferencedCells() const override;
 
     private:
         const SheetInterface& sheet_;
-        std::unique_ptr<FormulaInterface> formula_;
+        std::unique_ptr<FormulaInterface>      formula_;
     };
 
 private:
-    Sheet&                            sheet_;
+    Sheet& sheet_;
     Position                          pos_;
     std::unique_ptr<Impl>             impl_;
     Positions                         dependents_;
